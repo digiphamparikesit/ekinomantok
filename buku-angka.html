@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Buku Angka</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #12181A;
+  --surface: #1B2325;
+  --surface-2: #222C2E;
+  --ink: #EDE8DC;
+  --ink-dim: #9BA6A4;
+  --brass: #C99A44;
+  --brass-dim: #8A6C33;
+  --line: #33403F;
+  --good: #7FA087;
+  --bad: #B06B5B;
+  --radius: 3px;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  padding:32px 20px 60px;
+  min-height:100vh;
+}
+
+.wrap{max-width:920px;margin:0 auto;}
+
+header{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+  border-bottom:1px solid var(--line);
+  padding-bottom:18px;
+  margin-bottom:24px;
+}
+h1{
+  font-family:'Fraunces',serif;
+  font-weight:700;
+  font-size:30px;
+  letter-spacing:0.3px;
+  margin:0;
+}
+h1 span{color:var(--brass);}
+.subtitle{
+  font-size:12px;
+  color:var(--ink-dim);
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+  margin-top:4px;
+}
+
+.year-tabs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.year-btn{
+  font-family:'IBM Plex Mono',monospace;
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--ink-dim);
+  padding:6px 12px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  font-size:14px;
+  transition:all .15s ease;
+}
+.year-btn:hover{border-color:var(--brass-dim);color:var(--ink);}
+.year-btn.active{
+  background:var(--brass);
+  border-color:var(--brass);
+  color:#1A1408;
+  font-weight:600;
+}
+.year-add{
+  font-family:'IBM Plex Mono',monospace;
+  background:transparent;
+  border:1px dashed var(--line);
+  color:var(--ink-dim);
+  padding:6px 10px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  font-size:14px;
+}
+.year-add:hover{color:var(--brass);border-color:var(--brass-dim);}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:20px 22px;
+  margin-bottom:20px;
+}
+.card-title{
+  font-family:'Fraunces',serif;
+  font-size:15px;
+  font-weight:600;
+  color:var(--brass);
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin:0 0 16px;
+}
+
+.entry-form{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:flex-end;
+}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:1px;}
+.field input{
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  color:var(--ink);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:14px;
+  padding:9px 10px;
+  border-radius:var(--radius);
+  outline:none;
+}
+.field input:focus{border-color:var(--brass-dim);}
+#val-input{width:180px;}
+.add-btn{
+  background:var(--brass);
+  border:none;
+  color:#1A1408;
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:14px;
+  padding:10px 18px;
+  border-radius:var(--radius);
+  cursor:pointer;
+}
+.add-btn:hover{background:#DBAE5C;}
+.add-btn:disabled{opacity:.5;cursor:default;}
+.form-msg{font-size:12px;color:var(--bad);margin-top:8px;min-height:14px;}
+
+.grid{
+  display:grid;
+  grid-template-columns:1.3fr 1fr;
+  gap:20px;
+}
+@media (max-width:720px){.grid{grid-template-columns:1fr;}}
+
+.month-row{
+  display:flex;
+  align-items:baseline;
+  padding:7px 0;
+  border-bottom:1px dotted var(--line);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:14px;
+}
+.month-row:last-of-type{border-bottom:none;}
+.month-name{width:80px;color:var(--ink-dim);}
+.month-leader{
+  flex:1;
+  border-bottom:1px dotted var(--line);
+  margin:0 8px 3px;
+  height:0;
+}
+.month-value{min-width:110px;text-align:right;}
+.month-value.zero{color:var(--ink-dim);}
+
+.total-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--brass-dim);
+}
+.total-label{
+  font-family:'Fraunces',serif;
+  font-weight:600;
+  font-size:14px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  color:var(--ink);
+}
+.total-value{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:20px;
+  font-weight:600;
+  color:var(--brass);
+}
+
+.chart{
+  display:flex;
+  align-items:flex-end;
+  gap:6px;
+  height:180px;
+  padding-top:10px;
+}
+.bar-col{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  height:100%;
+  gap:6px;
+}
+.bar{
+  width:100%;
+  background:linear-gradient(180deg,var(--brass),var(--brass-dim));
+  border-radius:2px 2px 0 0;
+  min-height:2px;
+  transition:height .3s ease;
+}
+.bar-label{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;
+  color:var(--ink-dim);
+}
+
+.history-list{max-height:340px;overflow-y:auto;}
+.hrow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:9px 0;
+  border-bottom:1px solid var(--line);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;
+}
+.hrow:last-child{border-bottom:none;}
+.hdate{color:var(--ink-dim);width:130px;}
+.hval{flex:1;text-align:right;}
+.hdel{
+  background:none;
+  border:none;
+  color:var(--ink-dim);
+  cursor:pointer;
+  font-size:16px;
+  line-height:1;
+  padding:2px 6px;
+}
+.hdel:hover{color:var(--bad);}
+.empty{
+  color:var(--ink-dim);
+  font-size:13px;
+  text-align:center;
+  padding:24px 0;
+  font-style:italic;
+}
+.loading{color:var(--ink-dim);font-size:13px;padding:12px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Buku <span>Angka</span></h1>
+      <div class="subtitle">catatan nilai harian</div>
+    </div>
+    <div class="year-tabs" id="year-tabs"></div>
+  </header>
+
+  <div class="card">
+    <div class="card-title">Tambah Entri</div>
+    <div class="entry-form">
+      <div class="field">
+        <label for="date-input">Tanggal</label>
+        <input type="date" id="date-input">
+      </div>
+      <div class="field">
+        <label for="val-input">Nilai</label>
+        <input type="number" id="val-input" placeholder="0" step="any">
+      </div>
+      <button class="add-btn" id="add-btn">+ Tambah</button>
+    </div>
+    <div class="form-msg" id="form-msg"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Ringkasan Bulanan — <span id="ry-label"></span></div>
+      <div id="months"></div>
+      <div class="total-row">
+        <div class="total-label">Total Tahun</div>
+        <div class="total-value" id="year-total">0</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Grafik</div>
+      <div class="chart" id="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Riwayat Entri — <span id="rh-label"></span></div>
+    <div class="history-list" id="history"></div>
+  </div>
+
+</div>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+let entries = [];
+let selectedYear = new Date().getFullYear();
+let loaded = false;
+
+const fmt = n => new Intl.NumberFormat('id-ID').format(n);
+
+async function loadData(){
+  const monthsEl = document.getElementById('months');
+  monthsEl.innerHTML = '<div class="loading">Memuat data…</div>';
+  try{
+    const res = await window.storage.get('entries', false);
+    entries = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    entries = [];
+  }
+  loaded = true;
+  render();
+}
+
+async function saveData(){
+  try{
+    await window.storage.set('entries', JSON.stringify(entries), false);
+  }catch(e){
+    document.getElementById('form-msg').textContent = 'Gagal menyimpan data, coba lagi.';
+  }
+}
+
+function getYears(){
+  const ys = new Set(entries.map(e => new Date(e.date+'T00:00:00').getFullYear()));
+  ys.add(new Date().getFullYear());
+  ys.add(selectedYear);
+  return Array.from(ys).sort((a,b)=>a-b);
+}
+
+function renderYearTabs(){
+  const wrap = document.getElementById('year-tabs');
+  wrap.innerHTML = '';
+  getYears().forEach(y=>{
+    const b = document.createElement('button');
+    b.className = 'year-btn' + (y===selectedYear ? ' active':'');
+    b.textContent = y;
+    b.onclick = ()=>{ selectedYear = y; render(); };
+    wrap.appendChild(b);
+  });
+  const add = document.createElement('button');
+  add.className = 'year-add';
+  add.textContent = '+ tahun';
+  add.onclick = ()=>{
+    const y = prompt('Masukkan tahun:');
+    const yn = parseInt(y,10);
+    if(yn && yn>1900 && yn<3000){ selectedYear = yn; render(); }
+  };
+  wrap.appendChild(add);
+}
+
+function renderMonths(){
+  const yearEntries = entries.filter(e => new Date(e.date+'T00:00:00').getFullYear() === selectedYear);
+  const totals = new Array(12).fill(0);
+  yearEntries.forEach(e=>{
+    const m = new Date(e.date+'T00:00:00').getMonth();
+    totals[m] += Number(e.value);
+  });
+
+  const monthsEl = document.getElementById('months');
+  monthsEl.innerHTML = '';
+  totals.forEach((t,i)=>{
+    const row = document.createElement('div');
+    row.className = 'month-row';
+    row.innerHTML = `
+      <div class="month-name">${MONTHS[i]}</div>
+      <div class="month-leader"></div>
+      <div class="month-value ${t===0?'zero':''}">${fmt(t)}</div>
+    `;
+    monthsEl.appendChild(row);
+  });
+
+  const yearTotal = totals.reduce((a,b)=>a+b,0);
+  document.getElementById('year-total').textContent = fmt(yearTotal);
+  document.getElementById('ry-label').textContent = selectedYear;
+  document.getElementById('rh-label').textContent = selectedYear;
+
+  renderChart(totals);
+  renderHistory(yearEntries);
+}
+
+function renderChart(totals){
+  const max = Math.max(...totals, 1);
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  totals.forEach((t,i)=>{
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const h = Math.max(2, (Math.abs(t)/max)*140);
+    col.innerHTML = `<div class="bar" style="height:${h}px"></div><div class="bar-label">${MONTHS[i]}</div>`;
+    chart.appendChild(col);
+  });
+}
+
+function renderHistory(yearEntries){
+  const hist = document.getElementById('history');
+  hist.innerHTML = '';
+  if(yearEntries.length===0){
+    hist.innerHTML = '<div class="empty">Belum ada entri untuk tahun ini.</div>';
+    return;
+  }
+  const sorted = [...yearEntries].sort((a,b)=> b.date.localeCompare(a.date));
+  sorted.forEach(e=>{
+    const row = document.createElement('div');
+    row.className = 'hrow';
+    const d = new Date(e.date+'T00:00:00');
+    const dateLabel = d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    row.innerHTML = `
+      <div class="hdate">${dateLabel}</div>
+      <div class="hval">${fmt(e.value)}</div>
+      <button class="hdel" title="Hapus" data-id="${e.id}">✕</button>
+    `;
+    row.querySelector('.hdel').onclick = ()=> deleteEntry(e.id);
+    hist.appendChild(row);
+  });
+}
+
+async function deleteEntry(id){
+  entries = entries.filter(e => e.id !== id);
+  render();
+  await saveData();
+}
+
+function render(){
+  renderYearTabs();
+  renderMonths();
+}
+
+document.getElementById('date-input').valueAsDate = new Date();
+
+document.getElementById('add-btn').addEventListener('click', async ()=>{
+  const dateInput = document.getElementById('date-input');
+  const valInput = document.getElementById('val-input');
+  const msg = document.getElementById('form-msg');
+  msg.textContent = '';
+
+  const date = dateInput.value;
+  const value = parseFloat(valInput.value);
+
+  if(!date){ msg.textContent = 'Pilih tanggal terlebih dahulu.'; return; }
+  if(isNaN(value)){ msg.textContent = 'Masukkan nilai angka yang valid.'; return; }
+
+  const btn = document.getElementById('add-btn');
+  btn.disabled = true;
+
+  entries.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,7), date, value });
+  selectedYear = new Date(date+'T00:00:00').getFullYear();
+  valInput.value = '';
+  render();
+  await saveData();
+  btn.disabled = false;
+});
+
+document.getElementById('val-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('add-btn').click();
+});
+
+loadData();
+</script>
+</body>
+</html>
