@@ -2,474 +2,623 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Buku Angka</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buku Pengantaran Resep Ruangan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --paper:#FAF7F0;
+    --paper-alt:#F1EBDC;
+    --ink:#23281F;
+    --muted:#6B6558;
+    --line:#DCD5C3;
+    --primary:#2F6B52;
+    --primary-dark:#1F4A38;
+    --gold:#B08628;
+    --negative:#B5533C;
+    --white:#FFFFFF;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    line-height:1.5;
+  }
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding:32px 20px 64px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:28px;
+  }
+  header h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:28px;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header .sub{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .year-picker{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .year-picker label{
+    font-size:13px;
+    color:var(--muted);
+  }
+  select, input[type=date], input[type=number], input[type=text]{
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--white);
+    color:var(--ink);
+  }
+  select:focus, input:focus{
+    outline:2px solid var(--primary);
+    outline-offset:1px;
+  }
+  .year-picker select{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:500;
+  }
+  .card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px 22px;
+    margin-bottom:24px;
+  }
+  .card h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:16px;
+    margin:0 0 16px;
+  }
+  form.entry-form{
+    display:grid;
+    grid-template-columns:150px 160px 1fr auto;
+    gap:12px;
+    align-items:end;
+  }
+  form.entry-form .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  form.entry-form label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  button{
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:10px 18px;
+    border-radius:var(--radius);
+    border:1px solid var(--primary);
+    background:var(--primary);
+    color:var(--white);
+    cursor:pointer;
+  }
+  button:hover{ background:var(--primary-dark); border-color:var(--primary-dark); }
+  button.ghost{
+    background:transparent;
+    color:var(--negative);
+    border:1px solid transparent;
+    padding:4px 8px;
+    font-weight:500;
+    font-size:12px;
+  }
+  button.ghost:hover{ background:#F6E9E5; }
 
-:root{
-  --bg: #12181A;
-  --surface: #1B2325;
-  --surface-2: #222C2E;
-  --ink: #EDE8DC;
-  --ink-dim: #9BA6A4;
-  --brass: #C99A44;
-  --brass-dim: #8A6C33;
-  --line: #33403F;
-  --good: #7FA087;
-  --bad: #B06B5B;
-  --radius: 3px;
-}
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    margin-bottom:24px;
+  }
+  .stat{
+    background:var(--paper-alt);
+    border-radius:12px;
+    padding:16px 18px;
+  }
+  .stat .label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    margin-bottom:6px;
+  }
+  .stat .value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    font-weight:500;
+  }
 
-*{box-sizing:border-box;}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--ink);
-  font-family:'Inter',sans-serif;
-  padding:32px 20px 60px;
-  min-height:100vh;
-}
+  .tape{
+    display:flex;
+    gap:0;
+    overflow-x:auto;
+    border-top:1px dashed var(--line);
+    border-bottom:1px dashed var(--line);
+    padding:4px 0;
+  }
+  .tape-item{
+    flex:1 0 76px;
+    text-align:center;
+    padding:10px 6px;
+    border-right:1px dashed var(--line);
+    min-width:76px;
+    cursor:pointer;
+    border-radius:6px;
+    transition:background 0.12s;
+  }
+  .tape-item:hover{ background:var(--paper-alt); }
+  .tape-item:last-child{ border-right:none; }
+  .tape-item .month{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-bottom:4px;
+  }
+  .tape-item .amount{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:500;
+  }
+  .tape-item .amount.zero{ color:var(--muted); }
+  .tape-item .amount.neg{ color:var(--negative); }
 
-.wrap{max-width:920px;margin:0 auto;}
+  .chart-wrap{ position:relative; width:100%; height:260px; margin-top:18px; }
 
-header{
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:12px;
-  border-bottom:1px solid var(--line);
-  padding-bottom:18px;
-  margin-bottom:24px;
-}
-h1{
-  font-family:'Fraunces',serif;
-  font-weight:700;
-  font-size:30px;
-  letter-spacing:0.3px;
-  margin:0;
-}
-h1 span{color:var(--brass);}
-.subtitle{
-  font-size:12px;
-  color:var(--ink-dim);
-  text-transform:uppercase;
-  letter-spacing:1.5px;
-  margin-top:4px;
-}
+  .month-group{ margin-bottom:18px; }
+  .month-group:last-child{ margin-bottom:0; }
+  .month-group h3{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:500;
+    color:var(--primary-dark);
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+    margin:0 0 8px;
+  }
+  table.entries{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+  }
+  table.entries td{
+    padding:7px 4px;
+    border-bottom:1px solid var(--paper-alt);
+    vertical-align:middle;
+  }
+  table.entries td.date{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--muted);
+    width:100px;
+    white-space:nowrap;
+  }
+  table.entries td.value{
+    font-family:'IBM Plex Mono', monospace;
+    text-align:right;
+    width:130px;
+    white-space:nowrap;
+  }
+  table.entries td.note{ color:var(--ink); }
+  table.entries td.action{ width:50px; text-align:right; }
 
-.year-tabs{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  flex-wrap:wrap;
-}
-.year-btn{
-  font-family:'IBM Plex Mono',monospace;
-  background:transparent;
-  border:1px solid var(--line);
-  color:var(--ink-dim);
-  padding:6px 12px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  font-size:14px;
-  transition:all .15s ease;
-}
-.year-btn:hover{border-color:var(--brass-dim);color:var(--ink);}
-.year-btn.active{
-  background:var(--brass);
-  border-color:var(--brass);
-  color:#1A1408;
-  font-weight:600;
-}
-.year-add{
-  font-family:'IBM Plex Mono',monospace;
-  background:transparent;
-  border:1px dashed var(--line);
-  color:var(--ink-dim);
-  padding:6px 10px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  font-size:14px;
-}
-.year-add:hover{color:var(--brass);border-color:var(--brass-dim);}
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    padding:24px 0;
+  }
 
-.card{
-  background:var(--surface);
-  border:1px solid var(--line);
-  border-radius:var(--radius);
-  padding:20px 22px;
-  margin-bottom:20px;
-}
-.card-title{
-  font-family:'Fraunces',serif;
-  font-size:15px;
-  font-weight:600;
-  color:var(--brass);
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin:0 0 16px;
-}
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(35,40,31,0.45);
+    align-items:flex-start;
+    justify-content:center;
+    padding:48px 16px;
+    z-index:50;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{
+    background:var(--white);
+    border-radius:14px;
+    max-width:520px;
+    width:100%;
+    padding:22px 24px;
+    border:1px solid var(--line);
+  }
+  .modal-box .modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    border-bottom:1px solid var(--line);
+    padding-bottom:12px;
+    margin-bottom:14px;
+  }
+  .modal-box h3{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:18px;
+    margin:0 0 4px;
+  }
+  .modal-box .modal-sub{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .modal-box .modal-close{
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-size:20px;
+    line-height:1;
+    padding:2px 6px;
+    cursor:pointer;
+  }
+  .modal-box .modal-close:hover{ color:var(--ink); }
+  .modal-total{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:20px;
+    font-weight:500;
+    margin-bottom:14px;
+  }
 
-.entry-form{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:flex-end;
-}
-.field{display:flex;flex-direction:column;gap:5px;}
-.field label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:1px;}
-.field input{
-  background:var(--surface-2);
-  border:1px solid var(--line);
-  color:var(--ink);
-  font-family:'IBM Plex Mono',monospace;
-  font-size:14px;
-  padding:9px 10px;
-  border-radius:var(--radius);
-  outline:none;
-}
-.field input:focus{border-color:var(--brass-dim);}
-#val-input{width:180px;}
-.add-btn{
-  background:var(--brass);
-  border:none;
-  color:#1A1408;
-  font-family:'Inter',sans-serif;
-  font-weight:600;
-  font-size:14px;
-  padding:10px 18px;
-  border-radius:var(--radius);
-  cursor:pointer;
-}
-.add-btn:hover{background:#DBAE5C;}
-.add-btn:disabled{opacity:.5;cursor:default;}
-.form-msg{font-size:12px;color:var(--bad);margin-top:8px;min-height:14px;}
-
-.grid{
-  display:grid;
-  grid-template-columns:1.3fr 1fr;
-  gap:20px;
-}
-@media (max-width:720px){.grid{grid-template-columns:1fr;}}
-
-.month-row{
-  display:flex;
-  align-items:baseline;
-  padding:7px 0;
-  border-bottom:1px dotted var(--line);
-  font-family:'IBM Plex Mono',monospace;
-  font-size:14px;
-}
-.month-row:last-of-type{border-bottom:none;}
-.month-name{width:80px;color:var(--ink-dim);}
-.month-leader{
-  flex:1;
-  border-bottom:1px dotted var(--line);
-  margin:0 8px 3px;
-  height:0;
-}
-.month-value{min-width:110px;text-align:right;}
-.month-value.zero{color:var(--ink-dim);}
-
-.total-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-top:14px;
-  padding-top:14px;
-  border-top:1px solid var(--brass-dim);
-}
-.total-label{
-  font-family:'Fraunces',serif;
-  font-weight:600;
-  font-size:14px;
-  letter-spacing:0.5px;
-  text-transform:uppercase;
-  color:var(--ink);
-}
-.total-value{
-  font-family:'IBM Plex Mono',monospace;
-  font-size:20px;
-  font-weight:600;
-  color:var(--brass);
-}
-
-.chart{
-  display:flex;
-  align-items:flex-end;
-  gap:6px;
-  height:180px;
-  padding-top:10px;
-}
-.bar-col{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-end;
-  height:100%;
-  gap:6px;
-}
-.bar{
-  width:100%;
-  background:linear-gradient(180deg,var(--brass),var(--brass-dim));
-  border-radius:2px 2px 0 0;
-  min-height:2px;
-  transition:height .3s ease;
-}
-.bar-label{
-  font-family:'IBM Plex Mono',monospace;
-  font-size:10px;
-  color:var(--ink-dim);
-}
-
-.history-list{max-height:340px;overflow-y:auto;}
-.hrow{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:9px 0;
-  border-bottom:1px solid var(--line);
-  font-family:'IBM Plex Mono',monospace;
-  font-size:13px;
-}
-.hrow:last-child{border-bottom:none;}
-.hdate{color:var(--ink-dim);width:130px;}
-.hval{flex:1;text-align:right;}
-.hdel{
-  background:none;
-  border:none;
-  color:var(--ink-dim);
-  cursor:pointer;
-  font-size:16px;
-  line-height:1;
-  padding:2px 6px;
-}
-.hdel:hover{color:var(--bad);}
-.empty{
-  color:var(--ink-dim);
-  font-size:13px;
-  text-align:center;
-  padding:24px 0;
-  font-style:italic;
-}
-.loading{color:var(--ink-dim);font-size:13px;padding:12px 0;}
+  @media (max-width:600px){
+    form.entry-form{ grid-template-columns:1fr; }
+    .stats-row{ grid-template-columns:1fr; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
   <header>
     <div>
-      <h1>Buku <span>Angka</span></h1>
-      <div class="subtitle">catatan nilai harian</div>
+      <h1>Buku Pengantaran Resep Ruangan</h1>
+      <div class="sub" id="subtitle">Laporan EKIN, direkap per bulan.</div>
     </div>
-    <div class="year-tabs" id="year-tabs"></div>
+    <div class="year-picker">
+      <label for="yearSelect">Tahun</label>
+      <select id="yearSelect"></select>
+    </div>
   </header>
 
   <div class="card">
-    <div class="card-title">Tambah Entri</div>
-    <div class="entry-form">
+    <h2>Tambah entri</h2>
+    <form class="entry-form" id="entryForm">
       <div class="field">
-        <label for="date-input">Tanggal</label>
-        <input type="date" id="date-input">
+        <label for="inputDate">Tanggal</label>
+        <input type="date" id="inputDate" required>
       </div>
       <div class="field">
-        <label for="val-input">Nilai</label>
-        <input type="number" id="val-input" placeholder="0" step="any">
+        <label for="inputValue">Nilai</label>
+        <input type="number" id="inputValue" step="any" placeholder="0" required>
       </div>
-      <button class="add-btn" id="add-btn">+ Tambah</button>
-    </div>
-    <div class="form-msg" id="form-msg"></div>
+      <div class="field">
+        <label for="inputNote">Catatan (opsional)</label>
+        <input type="text" id="inputNote" placeholder="catatan">
+      </div>
+      <button type="submit">Tambah</button>
+    </form>
   </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="card-title">Ringkasan Bulanan — <span id="ry-label"></span></div>
-      <div id="months"></div>
-      <div class="total-row">
-        <div class="total-label">Total Tahun</div>
-        <div class="total-value" id="year-total">0</div>
-      </div>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="label">Total tahun ini</div>
+      <div class="value" id="statTotal">0</div>
     </div>
-    <div class="card">
-      <div class="card-title">Grafik</div>
-      <div class="chart" id="chart"></div>
+    <div class="stat">
+      <div class="label">Rata-rata / bulan</div>
+      <div class="value" id="statAvg">0</div>
+    </div>
+    <div class="stat">
+      <div class="label">Jumlah entri</div>
+      <div class="value" id="statCount">0</div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">Riwayat Entri — <span id="rh-label"></span></div>
-    <div class="history-list" id="history"></div>
+    <h2>Rekap per bulan</h2>
+    <div class="tape" id="tape"></div>
+    <div class="chart-wrap">
+      <canvas id="monthChart" role="img" aria-label="Grafik total nilai per bulan untuk tahun terpilih"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Riwayat</h2>
+    <div id="history"></div>
   </div>
 
 </div>
 
+<div class="modal-overlay" id="monthModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h3 id="modalTitle">Bulan</h3>
+        <div class="modal-sub">Laporan harian</div>
+      </div>
+      <button class="modal-close" id="modalClose" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="modal-total" id="modalTotal">0</div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
 <script>
-const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const STORAGE_KEY = 'buku-nilai-entries';
 let entries = [];
-let selectedYear = new Date().getFullYear();
-let loaded = false;
+let chartInstance = null;
 
-const fmt = n => new Intl.NumberFormat('id-ID').format(n);
+function idify(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-async function loadData(){
-  const monthsEl = document.getElementById('months');
-  monthsEl.innerHTML = '<div class="loading">Memuat data…</div>';
+function formatNumber(n){
+  return Number(n).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
+
+async function loadEntries(){
   try{
-    const res = await window.storage.get('entries', false);
+    const res = await window.storage.get(STORAGE_KEY, false);
     entries = res && res.value ? JSON.parse(res.value) : [];
   }catch(e){
     entries = [];
   }
-  loaded = true;
-  render();
 }
 
-async function saveData(){
+async function saveEntries(){
   try{
-    await window.storage.set('entries', JSON.stringify(entries), false);
+    await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
   }catch(e){
-    document.getElementById('form-msg').textContent = 'Gagal menyimpan data, coba lagi.';
+    console.error('Gagal menyimpan data', e);
   }
 }
 
 function getYears(){
-  const ys = new Set(entries.map(e => new Date(e.date+'T00:00:00').getFullYear()));
-  ys.add(new Date().getFullYear());
-  ys.add(selectedYear);
-  return Array.from(ys).sort((a,b)=>a-b);
+  const currentYear = new Date().getFullYear();
+  const years = new Set(entries.map(e => new Date(e.date).getFullYear()));
+  years.add(currentYear);
+  return Array.from(years).sort((a,b) => b - a);
 }
 
-function renderYearTabs(){
-  const wrap = document.getElementById('year-tabs');
-  wrap.innerHTML = '';
-  getYears().forEach(y=>{
-    const b = document.createElement('button');
-    b.className = 'year-btn' + (y===selectedYear ? ' active':'');
-    b.textContent = y;
-    b.onclick = ()=>{ selectedYear = y; render(); };
-    wrap.appendChild(b);
+function populateYearSelect(selected){
+  const sel = document.getElementById('yearSelect');
+  const years = getYears();
+  sel.innerHTML = '';
+  years.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === selected) opt.selected = true;
+    sel.appendChild(opt);
   });
-  const add = document.createElement('button');
-  add.className = 'year-add';
-  add.textContent = '+ tahun';
-  add.onclick = ()=>{
-    const y = prompt('Masukkan tahun:');
-    const yn = parseInt(y,10);
-    if(yn && yn>1900 && yn<3000){ selectedYear = yn; render(); }
-  };
-  wrap.appendChild(add);
 }
 
-function renderMonths(){
-  const yearEntries = entries.filter(e => new Date(e.date+'T00:00:00').getFullYear() === selectedYear);
+function getSelectedYear(){
+  return parseInt(document.getElementById('yearSelect').value, 10);
+}
+
+function entriesForYear(year){
+  return entries.filter(e => new Date(e.date).getFullYear() === year);
+}
+
+function monthlyTotals(year){
   const totals = new Array(12).fill(0);
-  yearEntries.forEach(e=>{
-    const m = new Date(e.date+'T00:00:00').getMonth();
+  entriesForYear(year).forEach(e => {
+    const m = new Date(e.date).getMonth();
     totals[m] += Number(e.value);
   });
-
-  const monthsEl = document.getElementById('months');
-  monthsEl.innerHTML = '';
-  totals.forEach((t,i)=>{
-    const row = document.createElement('div');
-    row.className = 'month-row';
-    row.innerHTML = `
-      <div class="month-name">${MONTHS[i]}</div>
-      <div class="month-leader"></div>
-      <div class="month-value ${t===0?'zero':''}">${fmt(t)}</div>
-    `;
-    monthsEl.appendChild(row);
-  });
-
-  const yearTotal = totals.reduce((a,b)=>a+b,0);
-  document.getElementById('year-total').textContent = fmt(yearTotal);
-  document.getElementById('ry-label').textContent = selectedYear;
-  document.getElementById('rh-label').textContent = selectedYear;
-
-  renderChart(totals);
-  renderHistory(yearEntries);
+  return totals;
 }
 
-function renderChart(totals){
-  const max = Math.max(...totals, 1);
-  const chart = document.getElementById('chart');
-  chart.innerHTML = '';
-  totals.forEach((t,i)=>{
-    const col = document.createElement('div');
-    col.className = 'bar-col';
-    const h = Math.max(2, (Math.abs(t)/max)*140);
-    col.innerHTML = `<div class="bar" style="height:${h}px"></div><div class="bar-label">${MONTHS[i]}</div>`;
-    chart.appendChild(col);
+function renderStats(year){
+  const yearEntries = entriesForYear(year);
+  const total = yearEntries.reduce((s, e) => s + Number(e.value), 0);
+  const monthsWithData = new Set(yearEntries.map(e => new Date(e.date).getMonth())).size || 1;
+  document.getElementById('statTotal').textContent = formatNumber(total);
+  document.getElementById('statAvg').textContent = formatNumber(total / monthsWithData);
+  document.getElementById('statCount').textContent = yearEntries.length;
+}
+
+function renderTape(year){
+  const totals = monthlyTotals(year);
+  const tape = document.getElementById('tape');
+  tape.innerHTML = '';
+  totals.forEach((val, i) => {
+    const item = document.createElement('div');
+    item.className = 'tape-item';
+    const cls = val === 0 ? 'zero' : (val < 0 ? 'neg' : '');
+    item.innerHTML = `<div class="month">${MONTH_NAMES[i]}</div><div class="amount ${cls}">${formatNumber(val)}</div>`;
+    item.addEventListener('click', () => openMonthReport(i));
+    tape.appendChild(item);
   });
 }
 
-function renderHistory(yearEntries){
-  const hist = document.getElementById('history');
-  hist.innerHTML = '';
-  if(yearEntries.length===0){
-    hist.innerHTML = '<div class="empty">Belum ada entri untuk tahun ini.</div>';
+function renderChart(year){
+  const totals = monthlyTotals(year);
+  const ctx = document.getElementById('monthChart');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: MONTH_NAMES,
+      datasets: [{
+        label: 'Total per bulan',
+        data: totals,
+        backgroundColor: '#2F6B52',
+        borderRadius: 4,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => formatNumber(v) } },
+        x: { grid: { display: false } }
+      },
+      onClick: (evt, elements) => {
+        if (elements.length > 0) openMonthReport(elements[0].index);
+      },
+      onHover: (evt, elements) => {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      }
+    }
+  });
+}
+
+function openMonthReport(monthIndex){
+  const year = getSelectedYear();
+  const list = entriesForYear(year)
+    .filter(e => new Date(e.date).getMonth() === monthIndex)
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+  const total = list.reduce((s, e) => s + Number(e.value), 0);
+
+  document.getElementById('modalTitle').textContent = `${MONTH_NAMES[monthIndex]} ${year}`;
+  document.getElementById('modalTotal').textContent = formatNumber(total);
+
+  const body = document.getElementById('modalBody');
+  if (list.length === 0){
+    body.innerHTML = '<div class="empty">Belum ada entri pada bulan ini.</div>';
+  } else {
+    const rows = list.map(e => `
+      <tr>
+        <td class="date">${e.date}</td>
+        <td class="value">${formatNumber(e.value)}</td>
+        <td class="note">${e.note ? escapeHtml(e.note) : ''}</td>
+      </tr>`).join('');
+    body.innerHTML = `<table class="entries"><tbody>${rows}</tbody></table>`;
+  }
+  document.getElementById('monthModal').classList.add('open');
+}
+
+function closeMonthReport(){
+  document.getElementById('monthModal').classList.remove('open');
+}
+window.openMonthReport = openMonthReport;
+
+function renderHistory(year){
+  const container = document.getElementById('history');
+  const yearEntries = entriesForYear(year).sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (yearEntries.length === 0){
+    container.innerHTML = '<div class="empty">Belum ada entri untuk tahun ini.</div>';
     return;
   }
-  const sorted = [...yearEntries].sort((a,b)=> b.date.localeCompare(a.date));
-  sorted.forEach(e=>{
-    const row = document.createElement('div');
-    row.className = 'hrow';
-    const d = new Date(e.date+'T00:00:00');
-    const dateLabel = d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-    row.innerHTML = `
-      <div class="hdate">${dateLabel}</div>
-      <div class="hval">${fmt(e.value)}</div>
-      <button class="hdel" title="Hapus" data-id="${e.id}">✕</button>
-    `;
-    row.querySelector('.hdel').onclick = ()=> deleteEntry(e.id);
-    hist.appendChild(row);
+  const byMonth = {};
+  yearEntries.forEach(e => {
+    const m = new Date(e.date).getMonth();
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(e);
   });
+  const monthKeys = Object.keys(byMonth).sort((a,b) => b - a);
+  container.innerHTML = monthKeys.map(m => {
+    const list = byMonth[m];
+    const subtotal = list.reduce((s, e) => s + Number(e.value), 0);
+    const rows = list.map(e => `
+      <tr data-id="${e.id}">
+        <td class="date">${e.date}</td>
+        <td class="value">${formatNumber(e.value)}</td>
+        <td class="note">${e.note ? escapeHtml(e.note) : ''}</td>
+        <td class="action"><button class="ghost" onclick="deleteEntry('${e.id}')">Hapus</button></td>
+      </tr>`).join('');
+    return `
+      <div class="month-group">
+        <h3><span>${MONTH_NAMES[m]} ${year}</span><span>${formatNumber(subtotal)}</span></h3>
+        <table class="entries"><tbody>${rows}</tbody></table>
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderAll(){
+  const year = getSelectedYear();
+  renderStats(year);
+  renderTape(year);
+  renderChart(year);
+  renderHistory(year);
 }
 
 async function deleteEntry(id){
   entries = entries.filter(e => e.id !== id);
-  render();
-  await saveData();
+  await saveEntries();
+  populateYearSelect(getSelectedYear());
+  renderAll();
 }
+window.deleteEntry = deleteEntry;
 
-function render(){
-  renderYearTabs();
-  renderMonths();
-}
+document.getElementById('yearSelect').addEventListener('change', renderAll);
 
-document.getElementById('date-input').valueAsDate = new Date();
-
-document.getElementById('add-btn').addEventListener('click', async ()=>{
-  const dateInput = document.getElementById('date-input');
-  const valInput = document.getElementById('val-input');
-  const msg = document.getElementById('form-msg');
-  msg.textContent = '';
-
-  const date = dateInput.value;
-  const value = parseFloat(valInput.value);
-
-  if(!date){ msg.textContent = 'Pilih tanggal terlebih dahulu.'; return; }
-  if(isNaN(value)){ msg.textContent = 'Masukkan nilai angka yang valid.'; return; }
-
-  const btn = document.getElementById('add-btn');
-  btn.disabled = true;
-
-  entries.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,7), date, value });
-  selectedYear = new Date(date+'T00:00:00').getFullYear();
-  valInput.value = '';
-  render();
-  await saveData();
-  btn.disabled = false;
+document.getElementById('modalClose').addEventListener('click', closeMonthReport);
+document.getElementById('monthModal').addEventListener('click', (ev) => {
+  if (ev.target.id === 'monthModal') closeMonthReport();
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') closeMonthReport();
 });
 
-document.getElementById('val-input').addEventListener('keydown', e=>{
-  if(e.key==='Enter') document.getElementById('add-btn').click();
+document.getElementById('entryForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const date = document.getElementById('inputDate').value;
+  const value = document.getElementById('inputValue').value;
+  const note = document.getElementById('inputNote').value.trim();
+  if (!date || value === '') return;
+  entries.push({ id: idify(), date, value: Number(value), note });
+  await saveEntries();
+  document.getElementById('inputValue').value = '';
+  document.getElementById('inputNote').value = '';
+  const enteredYear = new Date(date).getFullYear();
+  populateYearSelect(enteredYear);
+  document.getElementById('yearSelect').value = enteredYear;
+  renderAll();
 });
 
-loadData();
+(async function init(){
+  await loadEntries();
+  const today = new Date();
+  document.getElementById('inputDate').value = today.toISOString().slice(0,10);
+  populateYearSelect(today.getFullYear());
+  renderAll();
+})();
 </script>
 </body>
 </html>
+
