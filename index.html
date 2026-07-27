@@ -315,6 +315,18 @@
     </div>
   </header>
 
+  <div class="card" id="settingsCard">
+    <h2>Koneksi Google Sheets (Apps Script)</h2>
+    <form class="entry-form" id="gsForm" style="grid-template-columns:1fr auto;">
+      <div class="field">
+        <label for="inputGsUrl">URL Web App Apps Script</label>
+        <input type="text" id="inputGsUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
+      </div>
+      <button type="submit">Simpan &amp; Hubungkan</button>
+    </form>
+    <div class="modal-sub" id="gsStatus" style="margin-top:10px;">Belum terhubung.</div>
+  </div>
+
   <div class="card">
     <h2>Tambah entri</h2>
     <form class="entry-form" id="entryForm">
@@ -380,9 +392,11 @@
 
 <script>
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-const STORAGE_KEY = 'buku-nilai-entries';
+const GS_URL_KEY = 'buku-nilai-gs-url'; // hanya menyimpan URL macro, bukan data entri
+const DEFAULT_GS_URL = 'https://script.google.com/macros/s/AKfycbwmqbH49GMd0rNsofz5KFO8h2jeE8fleZRQ4CGmo5jiDeReCbw4mgvwB2vln2lPTRej/exec';
 let entries = [];
 let chartInstance = null;
+let gsUrl = '';
 
 function idify(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -390,20 +404,95 @@ function formatNumber(n){
   return Number(n).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
 
-async function loadEntries(){
+function setGsStatus(text, isError){
+  const el = document.getElementById('gsStatus');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--negative)' : 'var(--muted)';
+}
+
+async function loadGsUrl(){
   try{
-    const res = await window.storage.get(STORAGE_KEY, false);
-    entries = res && res.value ? JSON.parse(res.value) : [];
+    const res = await window.storage.get(GS_URL_KEY, false);
+    gsUrl = res && res.value ? res.value : DEFAULT_GS_URL;
   }catch(e){
-    entries = [];
+    gsUrl = DEFAULT_GS_URL;
+  }
+  document.getElementById('inputGsUrl').value = gsUrl;
+}
+
+async function saveGsUrl(url){
+  gsUrl = url;
+  try{
+    await window.storage.set(GS_URL_KEY, url, false);
+  }catch(e){
+    console.error('Gagal menyimpan URL', e);
   }
 }
 
-async function saveEntries(){
+// Ambil semua entri dari Google Apps Script (GET)
+async function loadEntries(){
+  if (!gsUrl){
+    entries = [];
+    setGsStatus('Belum terhubung. Masukkan URL Web App Apps Script di atas.', true);
+    return;
+  }
   try{
-    await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
+    setGsStatus('Memuat data dari Google Sheets...');
+    const res = await fetch(gsUrl, { method: 'GET' });
+    const data = await res.json();
+    if (data.success){
+      entries = data.entries || [];
+      setGsStatus('Terhubung. ' + entries.length + ' entri dimuat dari Google Sheets.');
+    } else {
+      entries = [];
+      setGsStatus('Gagal memuat: ' + (data.error || 'unknown error'), true);
+    }
   }catch(e){
-    console.error('Gagal menyimpan data', e);
+    entries = [];
+    setGsStatus('Gagal terhubung ke Apps Script: ' + e.message, true);
+  }
+}
+
+// Tambah satu entri ke Google Sheets (POST action=add)
+async function addEntryToGs(entry){
+  if (!gsUrl){ setGsStatus('Belum terhubung ke Apps Script.', true); return false; }
+  try{
+    const res = await fetch(gsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight di Apps Script
+      body: JSON.stringify({ action: 'add', date: entry.date, value: entry.value, note: entry.note })
+    });
+    const data = await res.json();
+    if (data.success){
+      entry.id = data.id;
+      return true;
+    }
+    setGsStatus('Gagal menambah entri: ' + (data.error || 'unknown error'), true);
+    return false;
+  }catch(e){
+    setGsStatus('Gagal menambah entri: ' + e.message, true);
+    return false;
+  }
+}
+
+// Hapus satu entri di Google Sheets (POST action=delete)
+async function deleteEntryFromGs(id){
+  if (!gsUrl){ setGsStatus('Belum terhubung ke Apps Script.', true); return false; }
+  try{
+    const res = await fetch(gsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'delete', id: id })
+    });
+    const data = await res.json();
+    if (!data.success){
+      setGsStatus('Gagal menghapus entri: ' + (data.error || 'unknown error'), true);
+      return false;
+    }
+    return true;
+  }catch(e){
+    setGsStatus('Gagal menghapus entri: ' + e.message, true);
+    return false;
   }
 }
 
@@ -578,14 +667,25 @@ function renderAll(){
 }
 
 async function deleteEntry(id){
+  const ok = await deleteEntryFromGs(id);
+  if (!ok) return;
   entries = entries.filter(e => e.id !== id);
-  await saveEntries();
   populateYearSelect(getSelectedYear());
   renderAll();
 }
 window.deleteEntry = deleteEntry;
 
 document.getElementById('yearSelect').addEventListener('change', renderAll);
+
+document.getElementById('gsForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const url = document.getElementById('inputGsUrl').value.trim();
+  if (!url) return;
+  await saveGsUrl(url);
+  await loadEntries();
+  populateYearSelect(getSelectedYear());
+  renderAll();
+});
 
 document.getElementById('modalClose').addEventListener('click', closeMonthReport);
 document.getElementById('monthModal').addEventListener('click', (ev) => {
@@ -601,8 +701,10 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
   const value = document.getElementById('inputValue').value;
   const note = document.getElementById('inputNote').value.trim();
   if (!date || value === '') return;
-  entries.push({ id: idify(), date, value: Number(value), note });
-  await saveEntries();
+  const newEntry = { id: idify(), date, value: Number(value), note };
+  const ok = await addEntryToGs(newEntry);
+  if (!ok) return;
+  entries.push(newEntry);
   document.getElementById('inputValue').value = '';
   document.getElementById('inputNote').value = '';
   const enteredYear = new Date(date).getFullYear();
@@ -612,6 +714,7 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
 });
 
 (async function init(){
+  await loadGsUrl();
   await loadEntries();
   const today = new Date();
   document.getElementById('inputDate').value = today.toISOString().slice(0,10);
