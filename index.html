@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{
     --paper:#FAF7F0;
@@ -81,6 +82,25 @@
   .year-picker select{
     font-family:'IBM Plex Mono', monospace;
     font-weight:500;
+  }
+  .icon-btn{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    width:36px;
+    height:36px;
+    padding:0;
+    border-radius:8px;
+    font-size:16px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .icon-btn:hover{
+    background:var(--paper-alt);
+    color:var(--ink);
+    border-color:var(--line);
   }
   .card{
     background:var(--white);
@@ -310,22 +330,13 @@
       <div class="sub" id="subtitle">Laporan EKIN, direkap per bulan.</div>
     </div>
     <div class="year-picker">
+      <label for="profileSelect">Profil</label>
+      <select id="profileSelect"></select>
       <label for="yearSelect">Tahun</label>
       <select id="yearSelect"></select>
+      <button type="button" id="settingsBtn" class="icon-btn" aria-label="Pengaturan koneksi">⚙</button>
     </div>
   </header>
-
-  <div class="card" id="settingsCard">
-    <h2>Koneksi Google Sheets (Apps Script)</h2>
-    <form class="entry-form" id="gsForm" style="grid-template-columns:1fr auto;">
-      <div class="field">
-        <label for="inputGsUrl">URL Web App Apps Script</label>
-        <input type="text" id="inputGsUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
-      </div>
-      <button type="submit">Simpan &amp; Hubungkan</button>
-    </form>
-    <div class="modal-sub" id="gsStatus" style="margin-top:10px;">Belum terhubung.</div>
-  </div>
 
   <div class="card">
     <h2>Tambah entri</h2>
@@ -376,6 +387,38 @@
 
 </div>
 
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h3 id="settingsModalTitle">Pengaturan Profil</h3>
+        <div class="modal-sub">1 file Google Sheet, tiap profil punya tab sendiri</div>
+      </div>
+      <button class="modal-close" id="settingsClose" aria-label="Tutup">&times;</button>
+    </div>
+    <form class="entry-form" id="gsForm" style="grid-template-columns:1fr; gap:14px;">
+      <div class="field">
+        <label for="inputGsUrl">URL Web App Apps Script (1 URL untuk semua profil)</label>
+        <input type="text" id="inputGsUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
+      </div>
+      <div class="field">
+        <label for="inputProfileName">Nama Profil (label tampilan)</label>
+        <input type="text" id="inputProfileName" placeholder="mis. Petugas 1">
+      </div>
+      <div class="field">
+        <label for="inputSignerName">Nama Pegawai (penandatangan laporan)</label>
+        <input type="text" id="inputSignerName" placeholder="mis. Edy Sudiyanto">
+      </div>
+      <div class="field">
+        <label for="inputSignerNip">NIP Pegawai</label>
+        <input type="text" id="inputSignerNip" placeholder="mis. 197210102007011050">
+      </div>
+      <button type="submit">Simpan Profil Ini</button>
+    </form>
+    <div class="modal-sub" id="gsStatus" style="margin-top:12px;">Belum terhubung.</div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="monthModal">
   <div class="modal-box">
     <div class="modal-head">
@@ -386,14 +429,29 @@
       <button class="modal-close" id="modalClose" aria-label="Tutup">&times;</button>
     </div>
     <div class="modal-total" id="modalTotal">0</div>
+    <button id="exportExcelBtn" style="margin-bottom:14px;">Unduh Laporan Excel</button>
     <div id="modalBody"></div>
   </div>
 </div>
 
 <script>
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-const GS_URL_KEY = 'buku-nilai-gs-url'; // hanya menyimpan URL macro, bukan data entri
+const MONTH_NAMES_FULL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+let currentModalMonth = null;
+let currentModalYear = null;
+
+// --- Profil (2 user terpisah, masing-masing punya TAB Google Sheet sendiri) ---
+const PROFILES_KEY = 'buku-nilai-profiles';
+const ACTIVE_PROFILE_KEY = 'buku-nilai-active-profile';
+const SHARED_GS_URL_KEY = 'buku-nilai-shared-gs-url';
 const DEFAULT_GS_URL = 'https://script.google.com/macros/s/AKfycbwmqbH49GMd0rNsofz5KFO8h2jeE8fleZRQ4CGmo5jiDeReCbw4mgvwB2vln2lPTRej/exec';
+const DEFAULT_PROFILES = [
+  { id: 'user1', name: 'Om Antok', signerName: 'Om Antok', signerNip: '' },
+  { id: 'user2', name: 'Om Jakpar', signerName: 'Om Jakpar', signerNip: '' }
+];
+
+let profiles = [];
+let activeProfileId = null;
 let entries = [];
 let chartInstance = null;
 let gsUrl = '';
@@ -410,26 +468,83 @@ function setGsStatus(text, isError){
   el.style.color = isError ? 'var(--negative)' : 'var(--muted)';
 }
 
-async function loadGsUrl(){
+// Profil & URL disimpan dengan localStorage karena file ini dipakai sebagai file HTML
+// mandiri di beberapa perangkat (bukan hanya di dalam sesi Claude).
+function loadProfiles(){
   try{
-    const res = await window.storage.get(GS_URL_KEY, false);
-    gsUrl = res && res.value ? res.value : DEFAULT_GS_URL;
+    const raw = localStorage.getItem(PROFILES_KEY);
+    profiles = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+  }catch(e){
+    profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+  }
+  try{
+    activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0].id;
+  }catch(e){
+    activeProfileId = profiles[0].id;
+  }
+  if (!profiles.find(p => p.id === activeProfileId)) activeProfileId = profiles[0].id;
+
+  try{
+    const storedUrl = localStorage.getItem(SHARED_GS_URL_KEY);
+    gsUrl = storedUrl || DEFAULT_GS_URL;
   }catch(e){
     gsUrl = DEFAULT_GS_URL;
   }
-  document.getElementById('inputGsUrl').value = gsUrl;
 }
 
-async function saveGsUrl(url){
-  gsUrl = url;
+function saveProfiles(){
   try{
-    await window.storage.set(GS_URL_KEY, url, false);
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+    localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
   }catch(e){
-    console.error('Gagal menyimpan URL', e);
+    console.error('Gagal menyimpan profil (localStorage tidak tersedia di perangkat ini)', e);
   }
 }
 
-// Ambil semua entri dari Google Apps Script (GET)
+function saveSharedGsUrl(url){
+  gsUrl = url;
+  try{
+    localStorage.setItem(SHARED_GS_URL_KEY, url);
+  }catch(e){
+    console.error('Gagal menyimpan URL (localStorage tidak tersedia di perangkat ini)', e);
+  }
+}
+
+function getActiveProfile(){
+  return profiles.find(p => p.id === activeProfileId) || profiles[0];
+}
+
+function populateProfileSelect(){
+  const sel = document.getElementById('profileSelect');
+  sel.innerHTML = '';
+  profiles.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    if (p.id === activeProfileId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function openSettingsModal(){
+  const p = getActiveProfile();
+  document.getElementById('settingsModalTitle').textContent = `Pengaturan Profil — ${p.name}`;
+  document.getElementById('inputGsUrl').value = gsUrl || '';
+  document.getElementById('inputProfileName').value = p.name;
+  document.getElementById('inputSignerName').value = p.signerName || '';
+  document.getElementById('inputSignerNip').value = p.signerNip || '';
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+async function switchProfile(profileId){
+  activeProfileId = profileId;
+  saveProfiles();
+  await loadEntries();
+  populateYearSelect(new Date().getFullYear());
+  renderAll();
+}
+
+// Ambil semua entri dari Google Apps Script (GET), untuk tab profil yang aktif
 async function loadEntries(){
   if (!gsUrl){
     entries = [];
@@ -438,11 +553,12 @@ async function loadEntries(){
   }
   try{
     setGsStatus('Memuat data dari Google Sheets...');
-    const res = await fetch(gsUrl, { method: 'GET' });
+    const profileParam = encodeURIComponent(activeProfileId);
+    const res = await fetch(`${gsUrl}?profile=${profileParam}`, { method: 'GET' });
     const data = await res.json();
     if (data.success){
       entries = data.entries || [];
-      setGsStatus('Terhubung. ' + entries.length + ' entri dimuat dari Google Sheets.');
+      setGsStatus('Terhubung (' + getActiveProfile().name + '). ' + entries.length + ' entri dimuat dari Google Sheets.');
     } else {
       entries = [];
       setGsStatus('Gagal memuat: ' + (data.error || 'unknown error'), true);
@@ -460,7 +576,7 @@ async function addEntryToGs(entry){
     const res = await fetch(gsUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight di Apps Script
-      body: JSON.stringify({ action: 'add', date: entry.date, value: entry.value, note: entry.note })
+      body: JSON.stringify({ action: 'add', profile: activeProfileId, date: entry.date, value: entry.value, note: entry.note })
     });
     const data = await res.json();
     if (data.success){
@@ -482,7 +598,7 @@ async function deleteEntryFromGs(id){
     const res = await fetch(gsUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'delete', id: id })
+      body: JSON.stringify({ action: 'delete', profile: activeProfileId, id: id })
     });
     const data = await res.json();
     if (!data.success){
@@ -590,8 +706,140 @@ function renderChart(year){
   });
 }
 
+function dailyTotalsForMonth(year, monthIndex, daysInMonth){
+  const totals = new Array(daysInMonth).fill(0);
+  entriesForYear(year).forEach(e => {
+    const d = new Date(e.date);
+    if (d.getMonth() === monthIndex){
+      totals[d.getDate() - 1] += Number(e.value);
+    }
+  });
+  return totals;
+}
+
+async function exportMonthlyExcel(monthIndex, year){
+  const profile = getActiveProfile();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const totals = dailyTotalsForMonth(year, monthIndex, daysInMonth);
+  const capaian = totals.reduce((a, b) => a + b, 0);
+  const thinBorder = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(MONTH_NAMES_FULL[monthIndex]);
+  sheet.views = [{ showGridLines:false }];
+
+  const capaianCol = 3 + daysInMonth;
+  const targetCol = 4 + daysInMonth;
+  const lastCol = targetCol;
+
+  sheet.mergeCells(1, 1, 1, lastCol);
+  const titleCell = sheet.getCell(1, 1);
+  titleCell.value = 'REKAPAN PENGANTARAN OBAT & BMHP KE RUANG RAWAT';
+  titleCell.font = { name:'Arial', bold:true, size:11, color:{ argb:'FFFFFFFF' } };
+  titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFF0000' } };
+  titleCell.alignment = { horizontal:'center', vertical:'middle' };
+  sheet.getRow(1).height = 20;
+
+  sheet.getCell(3, 1).value = 'BULAN :';
+  sheet.getCell(3, 1).font = { name:'Arial', bold:true, size:9 };
+  sheet.mergeCells(3, 2, 3, 5);
+  const bulanCell = sheet.getCell(3, 2);
+  bulanCell.value = `${MONTH_NAMES_FULL[monthIndex].toUpperCase()} ${year}`;
+  bulanCell.font = { name:'Arial', bold:true, size:9 };
+
+  const headerRow = 5;
+  sheet.getCell(headerRow, 1).value = 'NO';
+  sheet.getCell(headerRow, 2).value = 'URAIAN';
+  for (let d = 1; d <= daysInMonth; d++){
+    sheet.getCell(headerRow, 2 + d).value = d;
+  }
+  sheet.getCell(headerRow, capaianCol).value = 'CAPAIAN';
+  sheet.getCell(headerRow, targetCol).value = 'TARGET';
+  for (let col = 1; col <= lastCol; col++){
+    const cell = sheet.getCell(headerRow, col);
+    cell.font = { name:'Arial', bold:true, size:9 };
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.border = thinBorder;
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: col <= 2 + daysInMonth ? 'FFC6E0B4' : 'FFFFFFFF' } };
+  }
+
+  const dataRow = 6;
+  sheet.getCell(dataRow, 1).value = 1;
+  sheet.getCell(dataRow, 2).value = 'JUMLAH RESEP YANG DI ANTAR';
+  sheet.getCell(dataRow, 1).font = { name:'Arial', size:9 };
+  sheet.getCell(dataRow, 1).alignment = { horizontal:'center' };
+  sheet.getCell(dataRow, 1).border = thinBorder;
+  sheet.getCell(dataRow, 2).font = { name:'Arial', size:9 };
+  sheet.getCell(dataRow, 2).alignment = { horizontal:'left', wrapText:true };
+  sheet.getCell(dataRow, 2).border = thinBorder;
+
+  for (let d = 1; d <= daysInMonth; d++){
+    const cell = sheet.getCell(dataRow, 2 + d);
+    cell.value = totals[d - 1] || null;
+    cell.font = { name:'Arial', size:9 };
+    cell.alignment = { horizontal:'center' };
+    cell.border = thinBorder;
+  }
+
+  const capCell = sheet.getCell(dataRow, capaianCol);
+  capCell.value = capaian;
+  capCell.font = { name:'Arial', bold:true, size:9, color:{ argb:'FFFF0000' } };
+  capCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFF00' } };
+  capCell.border = thinBorder;
+  capCell.alignment = { horizontal:'center' };
+
+  const targetCell = sheet.getCell(dataRow, targetCol);
+  targetCell.font = { name:'Arial', bold:true, size:9, color:{ argb:'FFFF0000' } };
+  targetCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFF00' } };
+  targetCell.border = thinBorder;
+  targetCell.alignment = { horizontal:'center' };
+
+  const noteRow = dataRow + 2;
+  sheet.getCell(noteRow, 1).value = 'Keterangan: kolom TARGET diisi manual sesuai target bulanan.';
+  sheet.getCell(noteRow, 1).font = { name:'Arial', italic:true, size:8, color:{ argb:'FF808080' } };
+
+  const signRow = noteRow + 3;
+  sheet.getCell(signRow, 2).value = 'Mengetahui,';
+  sheet.getCell(signRow, 2).font = { name:'Arial', size:9 };
+  sheet.getCell(signRow + 1, 2).value = 'Kepala Instalasi Farmasi';
+  sheet.getCell(signRow + 1, 2).font = { name:'Arial', size:9 };
+  sheet.getCell(signRow, capaianCol).value = 'Tenggarong Seberang, ......................';
+  sheet.getCell(signRow, capaianCol).font = { name:'Arial', size:9 };
+  sheet.getCell(signRow + 1, capaianCol).value = 'Pegawai yang bersangkutan';
+  sheet.getCell(signRow + 1, capaianCol).font = { name:'Arial', size:9 };
+
+  const nameRow = signRow + 5;
+  sheet.getCell(nameRow, 2).value = 'Helen Tapilouw, S.Si.Apt';
+  sheet.getCell(nameRow, 2).font = { name:'Arial', bold:true, size:9, underline:true };
+  sheet.getCell(nameRow + 1, 2).value = 'NIP.197507202005022003';
+  sheet.getCell(nameRow + 1, 2).font = { name:'Arial', size:9 };
+  sheet.getCell(nameRow, capaianCol).value = profile.signerName || '......................';
+  sheet.getCell(nameRow, capaianCol).font = { name:'Arial', bold:true, size:9, underline:true };
+  sheet.getCell(nameRow + 1, capaianCol).value = profile.signerNip ? `NIP.${profile.signerNip}` : '';
+  sheet.getCell(nameRow + 1, capaianCol).font = { name:'Arial', size:9 };
+
+  sheet.getColumn(1).width = 5;
+  sheet.getColumn(2).width = 26;
+  for (let d = 1; d <= daysInMonth; d++) sheet.getColumn(2 + d).width = 4.5;
+  sheet.getColumn(capaianCol).width = 10;
+  sheet.getColumn(targetCol).width = 10;
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Laporan_Pengantaran_${profile.name.replace(/\s+/g,'_')}_${MONTH_NAMES_FULL[monthIndex]}_${year}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function openMonthReport(monthIndex){
   const year = getSelectedYear();
+  currentModalMonth = monthIndex;
+  currentModalYear = year;
   const list = entriesForYear(year)
     .filter(e => new Date(e.date).getMonth() === monthIndex)
     .sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -677,14 +925,45 @@ window.deleteEntry = deleteEntry;
 
 document.getElementById('yearSelect').addEventListener('change', renderAll);
 
+document.getElementById('profileSelect').addEventListener('change', async (ev) => {
+  await switchProfile(ev.target.value);
+});
+
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  openSettingsModal();
+});
+document.getElementById('settingsClose').addEventListener('click', () => {
+  document.getElementById('settingsModal').classList.remove('open');
+});
+document.getElementById('settingsModal').addEventListener('click', (ev) => {
+  if (ev.target.id === 'settingsModal') document.getElementById('settingsModal').classList.remove('open');
+});
+
 document.getElementById('gsForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const url = document.getElementById('inputGsUrl').value.trim();
-  if (!url) return;
-  await saveGsUrl(url);
+  const name = document.getElementById('inputProfileName').value.trim();
+  const signerName = document.getElementById('inputSignerName').value.trim();
+  const signerNip = document.getElementById('inputSignerNip').value.trim();
+
+  saveSharedGsUrl(url);
+
+  const p = getActiveProfile();
+  if (name) p.name = name;
+  p.signerName = signerName;
+  p.signerNip = signerNip;
+  saveProfiles();
+  populateProfileSelect();
+
   await loadEntries();
   populateYearSelect(getSelectedYear());
   renderAll();
+  document.getElementById('settingsModal').classList.remove('open');
+});
+
+document.getElementById('exportExcelBtn').addEventListener('click', () => {
+  if (currentModalMonth === null || currentModalYear === null) return;
+  exportMonthlyExcel(currentModalMonth, currentModalYear);
 });
 
 document.getElementById('modalClose').addEventListener('click', closeMonthReport);
@@ -692,7 +971,10 @@ document.getElementById('monthModal').addEventListener('click', (ev) => {
   if (ev.target.id === 'monthModal') closeMonthReport();
 });
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape') closeMonthReport();
+  if (ev.key === 'Escape'){
+    closeMonthReport();
+    document.getElementById('settingsModal').classList.remove('open');
+  }
 });
 
 document.getElementById('entryForm').addEventListener('submit', async (ev) => {
@@ -714,7 +996,8 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
 });
 
 (async function init(){
-  await loadGsUrl();
+  loadProfiles();
+  populateProfileSelect();
   await loadEntries();
   const today = new Date();
   document.getElementById('inputDate').value = today.toISOString().slice(0,10);
@@ -724,4 +1007,3 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
 </script>
 </body>
 </html>
-
